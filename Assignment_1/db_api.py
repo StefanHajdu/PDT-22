@@ -1,4 +1,3 @@
-from sre_parse import GLOBAL_FLAGS
 import utils
 from io import StringIO
 import json
@@ -183,8 +182,10 @@ def insert_authors_copy(connection, authors):
     with connection.cursor() as cursor:
         global id_authors
         csv_4_authors = StringIO()
+
         for author in authors:
             author = json.loads(author)
+
             if author["id"] in id_authors:
                 continue
 
@@ -215,13 +216,14 @@ def insert_authors_copy(connection, authors):
 @utils.measure
 def insert_conversation_refs_copy(connection, tweets):
     with connection.cursor() as cursor:
+        global id_convs
         csv_4_convs_refs = StringIO()
+
         for tweet in tweets:
             tweet = json.loads(tweet)
 
             for ref in tweet.get("referenced_tweets", []):
                 parent_id = ref["id"]
-
                 if parent_id not in id_convs:
                     parent_id = None
 
@@ -288,8 +290,7 @@ def insert_conversations_copy(connection, tweets):
             )
             id_convs.update({str(tweet["id"]): True})
 
-            # annotation are under entities
-            if "annotations" in tweet:
+            if "entities" in tweet:
                 for annot in tweet["entities"].get("annotations", []):
                     global annot_cnt
                     csv_4_annots.write(
@@ -309,7 +310,6 @@ def insert_conversations_copy(connection, tweets):
                     )
                     annot_cnt += 1
 
-            if "entities" in tweet:
                 for url in tweet["entities"].get("urls", []):
                     global links_cnt
                     if len(url["expanded_url"]) > 2048:
