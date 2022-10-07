@@ -225,7 +225,7 @@ def insert_conversation_refs_copy(connection, tweets):
             for ref in tweet.get("referenced_tweets", []):
                 parent_id = ref["id"]
                 if parent_id not in id_convs:
-                    parent_id = None
+                    continue
 
                 global conv_ref_cnt
                 csv_4_convs_refs.write(
@@ -241,6 +241,37 @@ def insert_conversation_refs_copy(connection, tweets):
 
         csv_4_convs_refs.seek(0)
         cursor.copy_from(csv_4_convs_refs, "conversation_references", sep="\t")
+
+
+def insert_empty_author(connection, author_id):
+    new_author = {
+        "id": str(author_id),
+        "name": None,
+        "username": None,
+        "description": None,
+        "followers_count": None,
+        "following_count": None,
+        "tweet_count": None,
+        "listed_count": None,
+    }
+
+    cur = connection.cursor()
+    cur.execute(
+        """
+        INSERT INTO authors VALUES (
+                %(id)s,
+                %(name)s,
+                %(username)s,
+                %(description)s,
+                %(followers_count)s,
+                %(following_count)s,
+                %(tweet_count)s,
+                %(listed_count)s
+            )
+        """,
+        new_author,
+    )
+    id_authors.update({new_author["id"]: True})
 
 
 @utils.measure
@@ -265,7 +296,7 @@ def insert_conversations_copy(connection, tweets):
 
             author_id = tweet["author_id"]
             if author_id not in id_authors:
-                author_id = None
+                insert_empty_author(connection, author_id)
 
             csv_4_convs.write(
                 "\t".join(
