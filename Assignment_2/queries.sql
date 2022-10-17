@@ -24,7 +24,21 @@ EXPLAIN ANALYZE SELECT * FROM authors WHERE (followers_count >= 100) AND (follow
 
 CREATE INDEX idx_follow_interval ON authors USING BTREE (followers_count) WHERE (followers_count > 100) AND (followers_count <= 200);
 
+SELECT to_tsvector('english', 
+						'Once upon a midnight dreary, while I pondered, weak and weary,
+						 Over many a quaint and curious volume of forgotten lore—
+				   		 While I nodded, nearly napping, suddenly there came a tapping,');
+						 
+						 
+SELECT to_tsvector('english', 
+						'Once upon a midnight dreary, while I pondered, weak and weary,
+						 Over many a quaint and curious volume of forgotten lore—
+				   		 While I nodded, nearly napping, suddenly there came a tapping,') @@
+to_tsquery('english', 'tap & hello');
 
+SELECT * FROM ts_debug('english', 'Once upon a midnight dreary, while I pondered');
+
+SELECT to_tsquery('english', 'tap & hello');
 
 --
 -- ZADANIE II
