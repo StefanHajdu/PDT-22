@@ -336,7 +336,7 @@ Správnou voľbou je vytvorenie GIN indexu nad trigramami vytvorenými z url. V 
 
 ### Úloha 16
 
-Query:
+Indexy:
 
 ```SQL
 alter table authors
@@ -347,12 +347,22 @@ alter table authors
 	add column fts_description_eng tsvector
 		generated always as (to_tsvector('english', coalesce(description,''))) stored;
 
+alter table conversations
+	add column fts_content_eng tsvector
+		generated always as (to_tsvector('english', coalesce(content,''))) stored;
+
+
+create index idx_content_gin on conversations using gin (fts_content_eng);
 create index idx_username_gin on authors using gin (fts_username_eng);
 create index idx_description_gin on authors using gin (fts_description_eng);
 
 create index idx_author_id on authors using btree(id);
 create index idx_conv_id on conversations using btree(author_id);
+```
 
+Query AND:
+
+```SQL
 select
 	authors.username, authors.description, conversations.content, conversations.retweet_count
 from
@@ -367,8 +377,42 @@ where
 	to_tsvector('english', authors.description) @@ to_tsquery('english', 'Володимир & Президент')
 order by
 	retweet_count desc;
+```
 
--- ######################
+Explain Analyze:
+
+| ![u9.jpg](images/u17-and.png) |
+| :---------------------------: |
+|           JOIN AND            |
+
+Query OR:
+
+```SQL
+select
+	authors.username, authors.description, conversations.content, conversations.retweet_count
+from
+	conversations
+inner join
+	authors
+on
+	conversations.author_id = authors.id
+where
+	conversations.fts_content_eng @@ to_tsquery('english', 'Володимир & Президент') or
+	to_tsvector('english', authors.username) @@ to_tsquery('english', 'Володимир & Президент') or
+	to_tsvector('english', authors.description) @@ to_tsquery('english', 'Володимир & Президент')
+order by
+	retweet_count desc;
+```
+
+Explain Analyze:
+
+| ![u9.jpg](images/u17-or.png) |
+| :--------------------------: |
+|           JOIN OR            |
+
+Vysledne query:
+
+```SQL
 	select
 		authors.username, authors.description, conversations.content, conversations.retweet_count
 	from
@@ -404,3 +448,10 @@ union
 order by
 	retweet_count desc;
 ```
+
+Explain Analyze + Vysledok:
+
+| ![u9.jpg](images/u17-solution.png) |
+| :--------------------------------: |
+|   ![u9.jpg](images/u17-res.png)    |
+|           Najlepsi query           |
