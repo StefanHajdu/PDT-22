@@ -40,6 +40,74 @@ SELECT * FROM ts_debug('english', 'Once upon a midnight dreary, while I pondered
 
 SELECT to_tsquery('english', 'tap & hello');
 
+
+CREATE TABLE documents  
+(
+    document_id SERIAL,
+    document_text TEXT,
+
+    CONSTRAINT documents_pkey PRIMARY KEY (document_id)
+)
+
+INSERT INTO documents (document_text) VALUES  
+('Pack my box with five dozen liquor jugs.'),
+('Jackdaws love my big sphinx of quartz.'),
+('The five boxing wizards jump quickly.'),
+('How vexingly quick daft zebras jump!'),
+('Bright vixens jump; dozy fowl quack.'),
+('Sphinx of black quartz, judge my vow.');
+
+select to_tsvector(document_text) from documents;
+
+
+INSERT INTO documents (document_text) VALUES  
+('Putin is dooche, and it is new world order'),
+('new jackass world order, having putin'),
+('sdadasd asd as das dasd as das dasd as das putin');
+
+select to_tsvector(document_text) from documents;
+
+
+create index idx_docu_text_gist on documents using GIST (to_tsvector('simple', document_text));
+
+explain analyze
+select 
+	document_text
+from 
+	documents 
+where 
+	to_tsvector(document_text) @@ to_tsquery('simple', 'Putin & New <-> World <-> Order');
+
+--
+
+create index idx_conv_content_gist on conversations using gist (to_tsvector('english', content));
+create index idx_conv_content_gin on conversations using gin (to_tsvector('english', content));
+
+explain 
+select 
+	* 
+from 
+	conversations 
+where 
+	fts_content_eng @@ to_tsquery('english', 'Putin & New <-> World <-> Order') and possibly_sensitive=true;
+	
+
+select * from links where url like '%darujme.sk%';
+
+select pg_size_pretty(pg_relation_size('idx_conv_content_gist'));
+
+alter table conversations
+	add column fts_content_eng tsvector
+		generated always as (to_tsvector('english', coalesce(content,''))) stored;
+		
+		
+select fts_content_eng from conversations limit 10;
+
+
+create index idx_content_gin on conversations using gin (fts_content_eng);
+create index idx_content_gist on conversations using gist (fts_content_eng);
+
+
 --
 -- ZADANIE II
 --
