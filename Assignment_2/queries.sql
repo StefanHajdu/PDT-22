@@ -107,6 +107,42 @@ select fts_content_eng from conversations limit 10;
 create index idx_content_gin on conversations using gin (fts_content_eng);
 create index idx_content_gist on conversations using gist (fts_content_eng);
 
+SELECT to_tsvector('english', 
+						'Once upon a midnight dreary, while I pondered, weak and weary,
+						 Over many a quaint and curious volume of forgotten lore—
+				   		 While I nodded, nearly napping, suddenly there came a tapping, Володимир Президент'); 
+
+						 
+SELECT to_tsvector('english', 
+						'Once upon a midnight dreary, while I pondered, weak and weary,
+						 Over many a quaint and curious Президент, volume of forgotten lore—
+				   		 While I nodded, nearly napping, suddenly there came a tapping, Володимир ')				 
+		@@
+		to_tsquery('english', 'Володимир & Президент');
+	
+	
+SELECT to_tsvector('english', 'japanese. FtMゲイ🏳️‍🌈. like：LArc-en-Ciel，ACID ANDROID，Aimer，Yellow Studs．遠藤達哉。yukihiroさんと相馬武志(ex.Jake stone garage)を尊敬。政治家：枝野幸男、石川大我、Володимир Зеленський🇺🇦'); 
+
+
+SELECT to_tsvector('english', 'japanese. FtMゲイ🏳️‍🌈. like：LArc-en-Ciel，ACID ANDROID，Aimer，Yellow Studs．遠藤達哉。yukihiroさんと相馬武志(ex.Jake stone garage)を尊敬。政治家：枝野幸男、石川大我、Володимир Зеленський🇺🇦') 
+		@@
+		to_tsquery('english', 'Володимир & Президент');
+		
+-- #############################	
+		
+select authors.description 
+from authors 
+where to_tsvector('english', authors.description) 
+		@@ 
+	  to_tsquery('english', 'Володимир & Президент');
+	  
+select authors.username 
+from authors 
+where to_tsvector('english', authors.username) 
+		@@ 
+	  to_tsquery('english', 'Володимир & Президент');
+
+-- #############################
 
 --
 -- ZADANIE II

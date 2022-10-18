@@ -7,6 +7,7 @@ select * from authors where username = 'mfa_russia';
 ```
 
 Explain:
+
 ![u1](images/u1.png)
 
 Plánovač vybral paralelný sekvenčný scan. Dôvodom je to, že úloha je svojou charakteristikou paralelizovateľná, pretože môžeme pole autorov rozdeliť do menších častí, ktoré sa prehľadajú samostatne. Tiež máme v konfiguráku nastavený počet workerov na 2, čiže Postres má dovolené spawnovať workerov, ak potrebuje.
@@ -45,6 +46,7 @@ select * from authors where username = 'mfa_russia';
 ```
 
 Explain Analyze:
+
 ![u3](images/u3.png)
 
 Nebolo použitých viac workerov. Zrýlechenie vyplýva z toho, že vytvorením indexu sa zmenila dátová štruktúra, v ktorej sa vyhľadáva. Teraz sa používa stromová štruktúra BTREE, ktorá má logaritmickú zložitosť, na rozdiel od scanu, ktorý je lineárny.
@@ -179,6 +181,7 @@ select * from conversations where content like 'There are no excuses%' and possi
 ```
 
 Explain Analyze:
+
 ![u9.jpg](images/u10.png)
 
 Vytvorený BTREE index sa nepoužil. Pretože plánovač zvažuje BTREE index, keď sa má vykonať porovnanie (=, <, >, <=, =>). Nie keď chceme vyhľadávať reťazce podľa obsahu.
@@ -190,6 +193,7 @@ select * from conversations where content='There are no excuses' and possibly_se
 ```
 
 Explain Analyze:
+
 ![u9.jpg](images/u10-index.png)
 
 Potom by sa použil index scan, ale takto sa text vyhľadávať nedá.
@@ -209,6 +213,7 @@ lower(right(content, length('https://t.co/pkFwLXZlEm'))) = lower('https://t.co/p
 ```
 
 Explain Analyze:
+
 ![u9.jpg](images/u11-index.png)
 
 BTREE sa aktivuje ak hľadáme podľa porovnania, preto budeme vyhľadávať také záznamy, ktorých posledných N znakov (N je dĺžka reťazca 'https://t.co/pkFwLXZlEm') **je rovnakých** ako 'https://t.co/pkFwLXZlEm'. Ak chceme aby výsledok nebol závislý od veľkosti znakov vstupu prevedieme vstup na lowercase.
@@ -220,6 +225,7 @@ Použité funkcie:
 - length(): vráti dĺžku reťazca
 
 Výsledok:
+
 ![u9.jpg](images/u11-result.png)
 
 ### Úloha 12
@@ -327,3 +333,74 @@ Explain Analyze + Výsledky:
 |     Vytvorený GiST aj GIN     |
 
 Správnou voľbou je vytvorenie GIN indexu nad trigramami vytvorenými z url. V tejto úlohe sa nepozeráme na text z pohľadu FTS, teda nepotrebujeme tokeny. Potrebujeme aby sme vedeli rýchlo vyhľadávať podreťazce pomocou LIKE, na to sú trigrami najvhodnejší typ.
+
+### Úloha 16
+
+Query:
+
+```SQL
+alter table authors
+	add column fts_username_eng tsvector
+		generated always as (to_tsvector('english', coalesce(username,''))) stored;
+
+alter table authors
+	add column fts_description_eng tsvector
+		generated always as (to_tsvector('english', coalesce(description,''))) stored;
+
+create index idx_username_gin on authors using gin (fts_username_eng);
+create index idx_description_gin on authors using gin (fts_description_eng);
+
+create index idx_author_id on authors using btree(id);
+create index idx_conv_id on conversations using btree(author_id);
+
+select
+	authors.username, authors.description, conversations.content, conversations.retweet_count
+from
+	conversations
+inner join
+	authors
+on
+	conversations.author_id = authors.id
+where
+	conversations.fts_content_eng @@ to_tsquery('english', 'Володимир & Президент') and
+	to_tsvector('english', authors.username) @@ to_tsquery('english', 'Володимир & Президент') and
+	to_tsvector('english', authors.description) @@ to_tsquery('english', 'Володимир & Президент')
+order by
+	retweet_count desc;
+
+-- ######################
+	select
+		authors.username, authors.description, conversations.content, conversations.retweet_count
+	from
+		conversations
+	inner join
+		authors
+	on
+		conversations.author_id = authors.id
+	where
+		conversations.fts_content_eng @@ to_tsquery('english', 'Володимир & Президент')
+union
+	select
+		authors.username, authors.description, conversations.content, conversations.retweet_count
+	from
+		conversations
+	inner join
+		authors
+	on
+		conversations.author_id = authors.id
+	where
+		authors.fts_description_eng @@ to_tsquery('english', 'Володимир & Президент')
+union
+	select
+		authors.username, authors.description, conversations.content, conversations.retweet_count
+	from
+		conversations
+	inner join
+		authors
+	on
+		conversations.author_id = authors.id
+	where
+		authors.fts_username_eng @@ to_tsquery('english', 'Володимир & Президент')
+order by
+	retweet_count desc;
+```
