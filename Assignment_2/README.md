@@ -73,7 +73,7 @@ Explain Analyze:
 | :--------------------------: |
 | between 100 and 200 |
 | ![u4.jpg](images/u4-120.png) |
-| between 100 and 120X |
+| between 100 and 120 |
 
 Ako vidíme rozdiel je v tom, že ak hľadáme vačší interval, tak sa plánovač uprednostní obyčajný sekvenčný namiesto paralelného. Toto môže byť zapríčinené tým, že ako sa zvyšuje interval, tým sa zvyšuje aj cena gather operácie. Pretože paralelizácia nie je len o tom, že viac workerov => menší čas. Pri paralelizácií dochádza aj k rozdeleniu úlohy medzi workerov a komunikácie výsledkov do master procesu, ktoré tiež vyžadujú čas a výkon.
 
@@ -97,9 +97,9 @@ Explain Analyze:
 | :--------------------------: |
 | between 100 and 200 |
 | ![u5.jpg](images/u5-120.png) |
-| between 100 and 120X |
+| between 100 and 120 |
 
-Bitmap scany majú zmysel, ak je výstup príliš malí na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií načítavania obsahu. 
+Bitmap scany majú zmysel, ak je výstup príliš malý na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií načítavania obsahu. 
 - Teda najprv sa prebehne celý index a zapamätá si (pomocou bitmapy) na akej stránke je hľadaný riadok uložený. Toto robí **Bitmap Index Scan** 
 - Potom pomocou vytorenej bitmapy vie, ktoré stránky obsahujú hľadané riadky a sekvenčne tieto stránky prehľadá. Toto robí **Bitmap Heap Scan**
 - **Recheck Condition** je potrebný, aby sa dali lokalizovať hľadané riadky pri prehľadávaní stránky
@@ -145,6 +145,8 @@ Porovnanie času:
 | vytvorenie indexu pre retweet_count |
 | ![u7.jpg](images/u7-content.png) |
 | vytvorenie indexu pre content |
+
+Pri vytváraní BTREE indexu dochádza k porovnaniu hodnôt. Dlhý text ako napr. content sa porovnáva pomalšie ako číselné hodnoty, lebo text je nutné porovnať alfa-numericky, pričom sa prechádza po znakoch kým sa nenájde rozdiel.
 
 ### Úloha 8
 
