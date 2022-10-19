@@ -49,7 +49,7 @@ Explain Analyze:
 
 ![u3](images/u3.png)
 
-Nebolo použitých viac workerov. Zrýlechenie vyplýva z toho, že vytvorením indexu sa zmenila dátová štruktúra, v ktorej sa vyhľadáva. Teraz sa používa stromová štruktúra BTREE, ktorá má logaritmickú zložitosť, na rozdiel od scanu, ktorý je lineárny.
+Nebolo použitých viac workerov. Zrýlechenie vyplýva z toho, že vytvorením indexu sa zmenila dátová štruktúra, v ktorej sa vyhľadáva. Teraz sa používa stromová štruktúra BTREE, ktorá má logaritmickú zložitosť, na rozdiel od sekvenčného scanu, ktorý je lineárny.
 
 | ![u2.jpg](images/u3-b.png) |
 | :------------------------: |
@@ -75,7 +75,7 @@ Explain Analyze:
 | ![u4.jpg](images/u4-120.png) |
 | between 100 and 120X |
 
-Ako vidíme rozdiel je v tom, že ak hľadáme vačší interval, tak sa plánovač uprednostní obyčajný sekvenčný namiesto paralelného. Toto môže byť zapríčinené tým, že ako sa zvyšuje interval, tým sa zvyšuje aj cena gather operácie. Pretože paralelizácia nie je len o tom, že viac workerov => menší čas. Pri paralelizácií dochádza aj k rozdeleniu úlohy medzi workerov a komunikácie výsledkov do master procesu.
+Ako vidíme rozdiel je v tom, že ak hľadáme vačší interval, tak sa plánovač uprednostní obyčajný sekvenčný namiesto paralelného. Toto môže byť zapríčinené tým, že ako sa zvyšuje interval, tým sa zvyšuje aj cena gather operácie. Pretože paralelizácia nie je len o tom, že viac workerov => menší čas. Pri paralelizácií dochádza aj k rozdeleniu úlohy medzi workerov a komunikácie výsledkov do master procesu, ktoré tiež vyžadujú čas a výkon.
 
 ### Úloha 5:
 
@@ -98,6 +98,11 @@ Explain Analyze:
 | between 100 and 200 |
 | ![u5.jpg](images/u5-120.png) |
 | between 100 and 120X |
+
+Bitmap scany majú zmysel, ak je výstup príliš malí na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií načítavania obsahu. 
+- Teda najprv sa prebehne celý index a zapamätá si (pomocou bitmapy) na akej stránke je hľadaný riadok uložený. Toto robí **Bitmap Index Scan** 
+- Potom pomocou vytorenej bitmapy vie, ktoré stránky obsahujú hľadané riadky a sekvenčne tieto stránky prehľadá. Toto robí **Bitmap Heap Scan**
+- **Recheck Condition** je potrebný, aby sa dali lokalizovať hľadané riadky pri prehľadávaní stránky
 
 ### Úloha 6:
 
@@ -198,7 +203,7 @@ Explain Analyze:
 
 Potom by sa použil index scan, ale takto sa text vyhľadávať nedá.
 
-Zefektívniť query môžeme použitím indexu, ktoré podporujú vyhľadávanie podľa obsahu GiST a GIN.
+Zefektívniť query môžeme použitím indexu, ktoré podporujú vyhľadávanie podľa obsahu GiST a GIN nad typom, ktorý text tokenizuje (tsvector).
 
 ### Úloha 11
 
@@ -216,7 +221,7 @@ Explain Analyze:
 
 ![u9.jpg](images/u11-index.png)
 
-BTREE sa aktivuje ak hľadáme podľa porovnania, preto budeme vyhľadávať také záznamy, ktorých posledných N znakov (N je dĺžka reťazca 'https://t.co/pkFwLXZlEm') **je rovnakých** ako 'https://t.co/pkFwLXZlEm'. Ak chceme aby výsledok nebol závislý od veľkosti znakov vstupu prevedieme vstup na lowercase.
+BTREE sa aktivuje ak hľadáme podľa porovnania, preto zaindexujeme posledných N znakov (N je dĺžka reťazca 'https://t.co/pkFwLXZlEm'). Ak chceme aby výsledok nebol závislý od veľkosti znakov vstupu prevedieme indexovaný text na lowercase. Následne budeme podľa rovnakej podmienky aj vyhľadávať, teda hľadáme také záznamy, ktoré majú posledných N znakov **rovných** 'https://t.co/pkfwlxzlem'.
 
 Použité funkcie:
 
