@@ -1,3 +1,9 @@
+# Zadanie II.
+
+| Vypracoval: | Štefan Hajdú                                                   |
+| ----------- | -------------------------------------------------------------- |
+| GitHub:     | https://github.com/StefanHajdu/PDT-22/tree/master/Assignment_2 |
+
 ### Úloha 1:
 
 Query:
@@ -99,8 +105,9 @@ Explain Analyze:
 | ![u5.jpg](images/u5-120.png) |
 | between 100 and 120 |
 
-Bitmap scany majú zmysel, ak je výstup príliš malý na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií načítavania obsahu. 
-- Teda najprv sa prebehne celý index a zapamätá si (pomocou bitmapy) na akej stránke je hľadaný riadok uložený. Toto robí **Bitmap Index Scan** 
+Bitmap scany majú zmysel, ak je výstup príliš malý na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií načítavania obsahu.
+
+- Teda najprv sa prebehne celý index a zapamätá si (pomocou bitmapy) na akej stránke je hľadaný riadok uložený. Toto robí **Bitmap Index Scan**
 - Potom pomocou vytorenej bitmapy vie, ktoré stránky obsahujú hľadané riadky a sekvenčne tieto stránky prehľadá. Toto robí **Bitmap Heap Scan**
 - **Recheck Condition** je potrebný, aby sa dali lokalizovať hľadané riadky pri prehľadávaní stránky
 
@@ -109,6 +116,7 @@ Bitmap scany majú zmysel, ak je výstup príliš malý na sekvenčný, ale prí
 Query:
 
 ```SQL
+create index idx_follow_interval on authors using BTREE (followers_count) where (followers_count >= 100) and (followers_count <= 200);
 create index idx_authors_name on authors using BTREE (name);
 create index idx_authors_follow_cnt on authors using BTREE (followers_count);
 create index idx_authors_desc on authors using BTREE (description);
@@ -146,7 +154,11 @@ Porovnanie času:
 | ![u7.jpg](images/u7-content.png) |
 | vytvorenie indexu pre content |
 
-Pri vytváraní BTREE indexu dochádza k porovnaniu hodnôt. Dlhý text ako napr. content sa porovnáva pomalšie ako číselné hodnoty, lebo text je nutné porovnať alfa-numericky, pričom sa prechádza po znakoch kým sa nenájde rozdiel.
+Hlavným faktorom ovplyňujúcim rýchlosť vytvárania indexu je počet záznamov. V našom prípade je, ale počet záznamov rovnaký.
+
+Pri vytváraní BTREE indexu dochádza k porovnaniu hodnôt. Dlhý text ako content sa porovnáva pomalšie ako číselné hodnoty, lebo text je nutné porovnať alfa-numericky, pričom sa prechádza po znakoch kým sa nenájde rozdiel.
+
+Tým textové reťazce sú väčšie ako obyčajné integery do počtu bytov, tak aj index vytvorený nad nimi je väčší, teda je potrebných viac blokov v indexe, čo navyšuje aj počet vykonaných I/O operácií.
 
 ### Úloha 8
 
@@ -156,11 +168,36 @@ Query:
 create extension pgstattuple;
 create extension pageinspect;
 
-select * from pgstatindex('idx_conv_content');
-select * from pgstatindex('idx_conv_retweet');
-select * from pgstatindex('idx_authors_name');
-select * from pgstatindex('idx_authors_follow_cnt');
+select tree_level, root_block_no, index_size from pgstatindex('idx_conv_content');
+select tree_level, root_block_no, index_size from pgstatindex('idx_conv_retweet_cnt');
+select tree_level, root_block_no, index_size from pgstatindex('idx_authors_name');
+select tree_level, root_block_no, index_size from pgstatindex('idx_authors_follow_cnt');
+
+select avg_item_size, page_size from bt_page_stats('idx_conv_content', 1000);
+select avg_item_size, page_size from bt_page_stats('idx_conv_retweet_cnt', 1000);
+select avg_item_size, page_size from bt_page_stats('idx_authors_name', 1000);
+select avg_item_size, page_size from bt_page_stats('idx_authors_follow_cnt', 1000);
 ```
+
+| ![u9.jpg](images/u8-content.png)  |
+| :-------------------------------: |
+| ![u9.jpg](images/u8-content2.png) |
+|         idx_conv_content          |
+
+| ![u9.jpg](images/u8-retweet.png)  |
+| :-------------------------------: |
+| ![u9.jpg](images/u8-retweet2.png) |
+|         idx_conv_retweet          |
+
+| ![u9.jpg](images/u8-name.png)  |
+| :----------------------------: |
+| ![u9.jpg](images/u8-name2.png) |
+|        idx_authors_name        |
+
+| ![u9.jpg](images/u8-follow.png)  |
+| :------------------------------: |
+| ![u9.jpg](images/u8-follow2.png) |
+|      idx_authors_follow_cnt      |
 
 ### Úloha 9
 
@@ -178,6 +215,8 @@ Explain Analyze:
 |    Hľadaj 'Gates' bez indexu     |
 |  ![u9.jpg](images/u9-index.png)  |
 |  Hľadaj 'Gates' s BTREE indexom  |
+
+Rozdiel v plánoch nie je žiaden, plánovač vyberie paralelný scan aj keď je vytvorený index. Čo dáva zmysel, kedže BTREE index nevie vyhľadávať podreťazce, iba prefixy, lebo text usporiada alfa-numericky.
 
 ### Úloha 10
 
@@ -205,7 +244,15 @@ Explain Analyze:
 
 Potom by sa použil index scan, ale takto sa text vyhľadávať nedá.
 
-Zefektívniť query môžeme použitím indexu, ktoré podporujú vyhľadávanie podľa obsahu GiST a GIN nad typom, ktorý text tokenizuje (tsvector).
+Zefektívniť vyhľadávanie môžeme vytvorením GIN indexu nad typom trigram. Hoci toto by trochu overkill.
+
+Alebo vytvoriť BTREE nad inou sadou operátorov (varchar_pattern_ops), čím sa umožní vyhľadávanie prefixov pomocou LIKE:
+
+```SQL
+create index idx_content_prefix ON conversations using BTREE (content varchar_pattern_ops);
+```
+
+![u10-idx.jpg](images/u10-idx.png)
 
 ### Úloha 11
 
@@ -279,8 +326,6 @@ Explain Analyze:
 | ![u9.jpg](images/u13-res.png) |
 |         Zložený index         |
 
-Zložený index nevylepšil rýchlost vykonania query. Časová rovnosť je zapríčinená, tým že v oboch prípadoch sa používa jediný index. Teda zložený index nám na efektivite nepridá. Použitie zloženého indexu má význam pre query, ktoré by použilo viac rôznych index scanov.
-
 ### Úloha 14
 
 Query:
@@ -321,7 +366,7 @@ Explain Analyze + Výsledky:
 | ![u9.jpg](images/u15-gin-res.png) |
 |         Vytvorený iba GIN         |
 
-Vyhľadávanie nad GIN je efektívnejšie, pretože je 10-krát rýchlejšie ako nad GiST-om. Tiež sa GIN vytvoril rýchlejšie ako GiST (8 min vs 30 min).
+Vyhľadávanie nad GIN je efektívnejšie. Aj napriek tomu, že riešené cez Bitmap Heap Scan a nie cez priamy index scan ako GIST. Ukázalo sa, že až je 10-krát rýchlejšie v porovnaní s GIST-om. Tiež sa nám GIN vytvoril rýchlejšie ako GIST (8 min vs 30 min).
 
 ### Úloha 15
 
@@ -386,7 +431,7 @@ order by
 	retweet_count desc;
 ```
 
-Explain Analyze:
+Explain:
 
 | ![u9.jpg](images/u17-and.png) |
 | :---------------------------: |
@@ -411,13 +456,13 @@ order by
 	retweet_count desc;
 ```
 
-Explain Analyze:
+Explain:
 
 | ![u9.jpg](images/u17-or.png) |
 | :--------------------------: |
 |           JOIN OR            |
 
-Vysledne query:
+Výsledné query:
 
 ```SQL
 	select
@@ -456,9 +501,9 @@ order by
 	retweet_count desc;
 ```
 
-Explain Analyze + Vysledok:
+Explain + Výsledok:
 
 | ![u9.jpg](images/u17-solution.png) |
 | :--------------------------------: |
 |   ![u9.jpg](images/u17-res.png)    |
-|           Najlepsi query           |
+|          Najlepšie query           |
