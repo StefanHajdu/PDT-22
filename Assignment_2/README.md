@@ -18,29 +18,34 @@ Explain:
 
 Plánovač vybral paralelný sekvenčný scan. Dôvodom je to, že úloha je svojou charakteristikou paralelizovateľná, pretože môžeme pole autorov rozdeliť do menších častí, ktoré sa prehľadajú samostatne. Tiež máme v konfiguráku nastavený počet workerov na 2, čiže Postres má dovolené spawnovať workerov, ak potrebuje.
 
+Výsledok:
+![u1](images/u1-res.png)
+
 ### Úloha 2:
 
 Na selecte pracovali 2 workery (podľa hodnoty nastavenej v konfiguráku). Ich úlohou je prehľadať rôzne časti tabuľky (teraz sa tabuľka rozdelí na 2 nezávislé časti, každý worker prehľadá jednu)
 
 | ![u2.jpg](images/u2-0.png) |
 | :------------------------: |
-|       Sekvenčný scan       |
+|     **Sekvenčný scan**     |
 | ![u2.jpg](images/u2-1.png) |
-|          1 worker          |
+|        **1 worker**        |
 | ![u2.jpg](images/u2-2.png) |
-|         2 workers          |
+|       **2 workers**        |
 | ![u2.jpg](images/u2-3.png) |
-|         3 workers          |
+|       **3 workers**        |
 | ![u2.jpg](images/u2-4.png) |
-|         4 workers          |
+|       **4 workers**        |
 | ![u2.jpg](images/u2-6.png) |
-|         6 workers          |
+|       **6 workers**        |
 
 Čas na vykonanie selectu klesal do momentu kým sa nám neminuli voľné CPU (máme 4). Od nastavenia počtu workerov na 4, sa nám nezmenil počet spustených workerov. Počet workerov sme nastavovali pomocou:
 
 ```SQL
 set max_parallel_workers_per_gather to desired_number;
 ```
+
+Ďaľším limitom je veľkosť tabuľky, Postgres má definové koľko workerov vie vytvoriť pre danú veľkosť tabuľky. Pre našu tabuľku autorov o veľkosti cca. 1GB je maximálny počet workerov 5 (https://www.2ndquadrant.com/en/blog/postgresql96-parallel-sequential-scan/), ale toľko CPU už nemáme.
 
 ### Úloha 3:
 
@@ -59,9 +64,9 @@ Nebolo použitých viac workerov. Zrýlechenie vyplýva z toho, že vytvorením 
 
 | ![u2.jpg](images/u3-b.png) |
 | :------------------------: |
-|         3 workers          |
+|       **3 workers**        |
 | ![u2.jpg](images/u3-a.png) |
-|        BTREE INDEX         |
+|      **BTREE index**       |
 
 Použitím indexu sme vylepšili čas približne o polovicu v porovnaní s sekvenčným scanom s 3 workermi.
 
@@ -77,11 +82,18 @@ select * from authors where followers_count between 100 and 120;
 Explain Analyze:
 | ![u4.jpg](images/u4-200.png) |
 | :--------------------------: |
-| between 100 and 200 |
+| **between 100 and 200** |
 | ![u4.jpg](images/u4-120.png) |
-| between 100 and 120 |
+| **between 100 and 120** |
 
-Ako vidíme rozdiel je v tom, že ak hľadáme vačší interval, tak sa plánovač uprednostní obyčajný sekvenčný namiesto paralelného. Toto môže byť zapríčinené tým, že ako sa zvyšuje interval, tým sa zvyšuje aj cena gather operácie. Pretože paralelizácia nie je len o tom, že viac workerov => menší čas. Pri paralelizácií dochádza aj k rozdeleniu úlohy medzi workerov a komunikácie výsledkov do master procesu, ktoré tiež vyžadujú čas a výkon.
+Ako vidíme rozdiel je v tom, že ak hľadáme vačší interval, tak sa plánovač uprednostní obyčajný sekvenčný namiesto paralelného. Toto môže byť zapríčinené tým, že ako sa zvyšuje interval, tým sa zvyšuje aj cena gather operácie (zozbieranie výsledkov od workeror do master procesu). Pretože paralelizácia nie je len o tom, že viac workerov => menší čas. Pri paralelizácií dochádza aj k rozdeleniu úlohy medzi workerov a komunikácie výsledkov do master procesu, ktoré tiež vyžadujú čas a výkon.
+
+Výsledok:
+| ![u4.jpg](images/u4-res200.png) |
+| :--------------------------: |
+| **between 100 and 200** |
+| ![u4.jpg](images/u4-res120.png) |
+| **between 100 and 120** |
 
 ### Úloha 5:
 
@@ -101,11 +113,11 @@ create index idx_follow_interval on authors using BTREE (followers_count) where 
 Explain Analyze:
 | ![u5.jpg](images/u5-200.png) |
 | :--------------------------: |
-| between 100 and 200 |
+| **between 100 and 200** |
 | ![u5.jpg](images/u5-120.png) |
-| between 100 and 120 |
+| **between 100 and 120** |
 
-Bitmap scany majú zmysel, ak je výstup príliš malý na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií načítavania obsahu.
+Bitmap scany majú zmysel, ak je výstup príliš malý na sekvenčný, ale príliš veľký na index scan. Pretože oproti veľkému index scanu zmenšuje počet I/O operácií.
 
 - Teda najprv sa prebehne celý index a zapamätá si (pomocou bitmapy) na akej stránke je hľadaný riadok uložený. Toto robí **Bitmap Index Scan**
 - Potom pomocou vytorenej bitmapy vie, ktoré stránky obsahujú hľadané riadky a sekvenčne tieto stránky prehľadá. Toto robí **Bitmap Heap Scan**
@@ -134,9 +146,12 @@ insert into authors values (400008618, 'StefanHajdu', 'stevexo', 'james bond fan
 Porovnanie času:
 | ![u6.jpg](images/u6-index.png) |
 | :--------------------------: |
-| insert do tabuľky so 4 indexami |
+| **insert do tabuľky so 4 indexami** |
 | ![u6.jpg](images/u6-noindex.png) |
-| insert do tabuľky bez indexov |
+| **insert do tabuľky bez indexov** |
+
+Očakávali sme, že insert do tabuľky s indexami bude o niekoľko rádov pomalší, kvôli aktualizácií indexov. Keďže teraz musí byť miesto vloženia určené indexom, nie je možné vložiť záznam na prvé voľné miesto.
+Ale nakoniec trvajú približne rovnako, niekedy dokonca rýchlejšie insertneme do tabuľky s indexami.
 
 ### Úloha 7:
 
@@ -150,15 +165,15 @@ create index idx_conv_retweet on conversations using BTREE (retweet_count);
 Porovnanie času:
 | ![u7.jpg](images/u7-retweet.png) |
 | :--------------------------: |
-| vytvorenie indexu pre retweet_count |
+| **vytvorenie indexu pre retweet_count** |
 | ![u7.jpg](images/u7-content.png) |
-| vytvorenie indexu pre content |
+| v**ytvorenie indexu pre content** |
 
 Hlavným faktorom ovplyňujúcim rýchlosť vytvárania indexu je počet záznamov. V našom prípade je, ale počet záznamov rovnaký.
 
 Pri vytváraní BTREE indexu dochádza k porovnaniu hodnôt. Dlhý text ako content sa porovnáva pomalšie ako číselné hodnoty, lebo text je nutné porovnať alfa-numericky, pričom sa prechádza po znakoch kým sa nenájde rozdiel.
 
-Tým textové reťazce sú väčšie ako obyčajné integery do počtu bytov, tak aj index vytvorený nad nimi je väčší, teda je potrebných viac blokov v indexe, čo navyšuje aj počet vykonaných I/O operácií.
+Textové reťazce sú väčšie ako obyčajné integery do počtu bytov, tak aj index vytvorený nad nimi je väčší, teda je potrebných viac blokov v indexe, čo navyšuje aj počet vykonaných I/O operácií.
 
 ### Úloha 8
 
@@ -182,22 +197,25 @@ select avg_item_size, page_size from bt_page_stats('idx_authors_follow_cnt', 100
 | ![u9.jpg](images/u8-content.png)  |
 | :-------------------------------: |
 | ![u9.jpg](images/u8-content2.png) |
-|         idx_conv_content          |
+|       **idx_conv_content**        |
 
 | ![u9.jpg](images/u8-retweet.png)  |
 | :-------------------------------: |
 | ![u9.jpg](images/u8-retweet2.png) |
-|         idx_conv_retweet          |
+|       **idx_conv_retweet**        |
 
 | ![u9.jpg](images/u8-name.png)  |
 | :----------------------------: |
 | ![u9.jpg](images/u8-name2.png) |
-|        idx_authors_name        |
+|      **idx_authors_name**      |
 
 | ![u9.jpg](images/u8-follow.png)  |
 | :------------------------------: |
 | ![u9.jpg](images/u8-follow2.png) |
-|      idx_authors_follow_cnt      |
+|    **idx_authors_follow_cnt**    |
+
+Ukázalo sa, že indexy nad textom vytvoria mohutnejší strom s väčším množstvom root uzlov aj vačšou hĺbkou. Čo dáva zmysel, keďže text je zložitejší typ na porovnanie ako obyčaný integer.
+Pre priemernú veľkosť itemu platilo, že v zložitejšom strome bola menšia ako v jednoduchšom. Pretože veľkosť indexu je rozdelená do viacerých uzlov.
 
 ### Úloha 9
 
@@ -210,13 +228,16 @@ select * from conversations where content like '%Gates%';
 
 Explain Analyze:
 
-| ![u9.jpg](images/u9-noindex.png) |
-| :------------------------------: |
-|    Hľadaj 'Gates' bez indexu     |
-|  ![u9.jpg](images/u9-index.png)  |
-|  Hľadaj 'Gates' s BTREE indexom  |
+|  ![u9.jpg](images/u9-noindex.png)  |
+| :--------------------------------: |
+|   **Hľadaj 'Gates' bez indexu**    |
+|   ![u9.jpg](images/u9-index.png)   |
+| **Hľadaj 'Gates' s BTREE indexom** |
 
 Rozdiel v plánoch nie je žiaden, plánovač vyberie paralelný scan aj keď je vytvorený index. Čo dáva zmysel, kedže BTREE index nevie vyhľadávať podreťazce, iba prefixy, lebo text usporiada alfa-numericky.
+
+Výsledok:
+![](images/u9-res.png)
 
 ### Úloha 10
 
@@ -230,7 +251,10 @@ Explain Analyze:
 
 ![u9.jpg](images/u10.png)
 
-Vytvorený BTREE index sa nepoužil. Pretože plánovač zvažuje BTREE index, keď sa má vykonať porovnanie (=, <, >, <=, =>). Nie keď chceme vyhľadávať reťazce podľa obsahu.
+Vytvorený BTREE index sa nepoužil. Pretože plánovač zvažuje BTREE index, keď sa má vykonať porovnanie (=, <, >, <=, =>). Nie keď chceme vyhľadávať podreťazce pomocou `LIKE`.
+
+Výsledok:
+![](images/u10-res.png)
 
 Ak bolo query nasledovné:
 
@@ -244,9 +268,9 @@ Explain Analyze:
 
 Potom by sa použil index scan, ale takto sa text vyhľadávať nedá.
 
-Zefektívniť vyhľadávanie môžeme vytvorením GIN indexu nad typom trigram. Hoci toto by trochu overkill.
+Zefektívniť vyhľadávanie môžeme vytvorením GIN indexu nad typom trigram. Hoci toto by bol trochu overkill.
 
-Alebo vytvoriť BTREE nad inou sadou operátorov (varchar_pattern_ops), čím sa umožní vyhľadávanie prefixov pomocou LIKE:
+Alebo vytvoriť BTREE nad inou sadou operátorov (varchar_pattern_ops), čím sa umožní vyhľadávanie prefixov pomocou `LIKE`:
 
 ```SQL
 create index idx_content_prefix ON conversations using BTREE (content varchar_pattern_ops);
@@ -299,12 +323,12 @@ Explain Analyze:
 
 | ![u9.jpg](images/u12-noindex.png) |
 | :-------------------------------: |
-|            Bez indexov            |
+|          **Bez indexov**          |
 
 | ![u9.jpg](images/u12-3indexes.png) |
 | :--------------------------------: |
 |   ![u9.jpg](images/u12-res.png)    |
-|             S indexami             |
+|           **S indexami**           |
 
 Ukázalo sa, že sa používa jediný index scan, a to nad stĺpcom reply_count. Ktorým sa získajú záznamy s reply_count > 150. Ďaľšia časť podmienky už nie je riešená cez index, ale cez klasický filter. Pravdepodobne prvý index scan zredukuje množinu až tak, že ďaľší index scan nie je nutný. Pre toto konkrétne query nie je potrebné držať indexy pre retweet_count a quote_count.
 
@@ -324,7 +348,10 @@ Explain Analyze:
 |   ![u9.jpg](images/u13.png)   |
 | :---------------------------: |
 | ![u9.jpg](images/u13-res.png) |
-|         Zložený index         |
+|       **Zložený index**       |
+
+Separátne indexy by mali teoreticky pomalšie z toho dôvodu, že treba prejť viac rôznych indexov osobitne, teda máme viac I/O operácií ako pri zloženom indexe.
+V našom prípade, ale dôvodom zrýchelnia bolo, že vyhľadávanie v query je teraz vykonané pomocou jediného index scanu. Nie je už potrebný index scan na prvom indexe z ľava a potom filter na zvyšku. Preto je pre toto query výhodnejší zložený index. Použitie zloženého indexu na query, ho vylepší približne o 0.5 sekundy.
 
 ### Úloha 14
 
@@ -354,17 +381,17 @@ Explain Analyze + Výsledky:
 |   ![u9.jpg](images/u15-gist+gin.png)   |
 | :------------------------------------: |
 | ![u9.jpg](images/u15-gist+gin-res.png) |
-|         Vytvorený GiST aj GIN          |
+|       **Vytvorený GiST aj GIN**        |
 
 |   ![u9.jpg](images/u15-gist.png)   |
 | :--------------------------------: |
 | ![u9.jpg](images/u15-gist-res.png) |
-|         Vytvorený iba GiST         |
+|       **Vytvorený iba GiST**       |
 
 |   ![u9.jpg](images/u15-gin.png)   |
 | :-------------------------------: |
 | ![u9.jpg](images/u15-gin-res.png) |
-|         Vytvorený iba GIN         |
+|       **Vytvorený iba GIN**       |
 
 Vyhľadávanie nad GIN je efektívnejšie. Aj napriek tomu, že riešené cez Bitmap Heap Scan a nie cez priamy index scan ako GIST. Ukázalo sa, že až je 10-krát rýchlejšie v porovnaní s GIST-om. Tiež sa nám GIN vytvoril rýchlejšie ako GIST (8 min vs 30 min).
 
@@ -382,9 +409,9 @@ Explain Analyze + Výsledky:
 |   ![u9.jpg](images/u16.png)   |
 | :---------------------------: |
 | ![u9.jpg](images/u16-res.png) |
-|     Vytvorený GiST aj GIN     |
+|   **Vytvorený GiST aj GIN**   |
 
-Správnou voľbou je vytvorenie GIN indexu nad trigramami vytvorenými z url. V tejto úlohe sa nepozeráme na text z pohľadu FTS, teda nepotrebujeme tokeny. Potrebujeme aby sme vedeli rýchlo vyhľadávať podreťazce pomocou LIKE, na to sú trigrami najvhodnejší typ.
+Správnou voľbou je vytvorenie GIN indexu nad trigramami vytvorenými z url. V tejto úlohe sa nepozeráme na text z pohľadu FTS, teda nepotrebujeme tokeny. Potrebujeme aby sme vedeli rýchlo vyhľadávať podreťazce pomocou `LIKE`, na to sú trigrami najvhodnejší typ.
 
 ### Úloha 16
 
@@ -412,31 +439,6 @@ create index idx_author_id on authors using btree(id);
 create index idx_conv_id on conversations using btree(author_id);
 ```
 
-Query AND:
-
-```SQL
-select
-	authors.username, authors.description, conversations.content, conversations.retweet_count
-from
-	conversations
-inner join
-	authors
-on
-	conversations.author_id = authors.id
-where
-	conversations.fts_content_eng @@ to_tsquery('english', 'Володимир & Президент') and
-	to_tsvector('english', authors.username) @@ to_tsquery('english', 'Володимир & Президент') and
-	to_tsvector('english', authors.description) @@ to_tsquery('english', 'Володимир & Президент')
-order by
-	retweet_count desc;
-```
-
-Explain:
-
-| ![u9.jpg](images/u17-and.png) |
-| :---------------------------: |
-|           JOIN AND            |
-
 Query OR:
 
 ```SQL
@@ -450,8 +452,8 @@ on
 	conversations.author_id = authors.id
 where
 	conversations.fts_content_eng @@ to_tsquery('english', 'Володимир & Президент') or
-	to_tsvector('english', authors.username) @@ to_tsquery('english', 'Володимир & Президент') or
-	to_tsvector('english', authors.description) @@ to_tsquery('english', 'Володимир & Президент')
+	authors.fts_username_eng @@ to_tsquery('english', 'Володимир & Президент') or
+	authors.fts_description_eng @@ to_tsquery('english', 'Володимир & Президент')
 order by
 	retweet_count desc;
 ```
@@ -460,7 +462,36 @@ Explain:
 
 | ![u9.jpg](images/u17-or.png) |
 | :--------------------------: |
-|           JOIN OR            |
+|         **JOIN OR**          |
+
+Problémom s OR podmienkov je, že plánovač sa ju snaží riešiť cez hash join, teda sa prechádzajú všetky riadky z jednej aj z druhej tabuľky a testujú sa voči podmienke. Tým, že OR nie je binárny ako AND, tak je potrebné vyskúšať viacero možností. Nemôžeme podmienku zamietnuť pri prvom porušení, lebo stále môže byť splnená v iných stĺpcoch. Preto sa plánovaču môže javiť hash join a pechádzanie cez všetky riadky ako vhodnejší spôsob.
+
+Query AND:
+
+```SQL
+select
+	authors.username, authors.description, conversations.content, conversations.retweet_count
+from
+	conversations
+inner join
+	authors
+on
+	conversations.author_id = authors.id
+where
+	conversations.fts_content_eng @@ to_tsquery('english', 'Володимир & Президент') and
+	authors.fts_username_eng @@ to_tsquery('english', 'Володимир & Президент') and
+	authors.fts_description_eng @@ to_tsquery('english', 'Володимир & Президент')
+order by
+	retweet_count desc;
+```
+
+Explain:
+
+| ![u9.jpg](images/u17-and.png) |
+| :---------------------------: |
+|         **JOIN AND**          |
+
+Pri AND je situácia iné, pretože podmienka nám výrazne redukuje výsledok. Čiže sa už oplatí hľadať platnosť podmienky v indexe najprv pre prvý stĺpec a potom pre ďalšie. Nemusíme prechádzať cez všetky. Výsledky, pre ktoré podmienka platí (je ich určite výrazne menej v celom stĺci) sa potom ľahko spoja cez nested loop.
 
 Výsledné query:
 
@@ -506,4 +537,8 @@ Explain + Výsledok:
 | ![u9.jpg](images/u17-solution.png) |
 | :--------------------------------: |
 |   ![u9.jpg](images/u17-res.png)    |
-|          Najlepšie query           |
+|        **Najlepšie query**         |
+
+Vytvorenie indexov nad PK (authors.id) a FK (conversations.authors_id) nám zapríčiní zmenu join algoritmu z hash join na nested loop, ktorý si už pomáha použitím indexov pri matchovaní PK a FK. Čo zlepší query približne o 0.5 sekundy.
+
+Keďže plánovač nevie optimalizovať OR podmienku pri joine, tak sme spustili vyhľadávnie ako samostatné query pre každý stĺpec. Použili sme viacero malých joinov, ktoré je výhodnejšie porovnať cez index. Každé so samostatných vyhľadaní plánovač vie optimalizovať pomocou indexu. A výsledok sme vytvorili zjednotením výstupov pomocou union operácie.
