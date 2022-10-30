@@ -62,6 +62,8 @@ WHERE
     admin_level='4';
 ```
 
+![u3-res.jpg](images/u2-res.png)
+
 ---
 
 ## Úloha 3:
@@ -82,6 +84,8 @@ WHERE
 ORDER BY
     "Area in sqkm";
 ```
+
+![u3-res.jpg](images/u3-res.png)
 
 ---
 
@@ -270,3 +274,76 @@ Kraje + Poloha v QGIS:
 ![u.jpg](images/u9-2.png)
 Domovina v QGIS:
 ![u.jpg](images/u9-3.png)
+
+---
+
+## Úloha 10:
+
+```SQL
+SELECT
+	ST_Centroid(g.way),
+	ST_SRID(g.way)
+FROM
+	(
+		SELECT
+			way
+		FROM
+			planet_osm_polygon
+		WHERE
+			admin_level='4'
+		ORDER BY
+			round(
+				(ST_Area(
+					ST_Transform(way, 2065)) / 1000000)::numeric, 2
+			)
+		LIMIT 1
+	)as g
+```
+
+![u.jpg](images/u10-res.png)
+
+Na mape:
+![u.jpg](images/u10-map.png)
+
+## Uloha 11
+
+```SQL
+SELECT
+	ST_Intersection
+	(
+		way,
+		(
+			SELECT
+				ST_Transform(
+					ST_Buffer(border, 10000), 3857
+				)
+			FROM
+				ST_Transform(
+						ST_Intersection(
+							(
+								SELECT
+									way
+								FROM
+									planet_osm_polygon
+								WHERE
+									name='okres Malacky'
+							),
+							(
+								SELECT
+									way
+								FROM
+									planet_osm_polygon
+								WHERE
+									name='okres Pezinok'
+							)
+						), 2065
+			) as border
+		)
+	)
+FROM
+	planet_osm_roads
+```
+
+![u.jpg](images/u11-res.png)
+Na mape:
+![u.jpg](images/u11-res-map.png)
