@@ -2,7 +2,7 @@
 
 | Vypracoval: | Štefan Hajdú                                                   |
 | ----------- | -------------------------------------------------------------- |
-| GitHub:     | https://github.com/StefanHajdu/PDT-22/tree/master/Assignment_2 |
+| GitHub:     | https://github.com/StefanHajdu/PDT-22/tree/master/Assignment_3 |
 
 ## Úloha 1:
 
@@ -108,7 +108,7 @@ VALUES
 				48.2442545 18.3102629,
 				48.2443532 18.3103097,
 				48.2443337 18.3104035))',
-			4236
+			4326
 		), 3857
 	)
 );
@@ -117,7 +117,7 @@ INSERT INTO
 	planet_osm_polygon ("addr:housename", "addr:housenumber", way)
 VALUES
 (
-	'StefanRealHome',
+	'StefanReallyRealHome',
 	'1655/52',
 	ST_Transform(
 		ST_GeomFromText(
@@ -145,8 +145,11 @@ SELECT
 FROM
     planet_osm_polygon
 WHERE
-    "addr:housename"='StefanHome';
+    "addr:housename"='StefanReallyRealHome';
 ```
+
+![u.jpg](images/u4-2.png)
+![u.jpg](images/u4-1.png)
 
 ---
 
@@ -161,9 +164,11 @@ FROM
 	planet_osm_polygon
 WHERE
 	admin_level='4' AND
-	ST_Contains(way, (SELECT way FROM planet_osm_polygon WHERE "addr:housename"='StefanRealHome')
+	ST_Contains(way, (SELECT way FROM planet_osm_polygon WHERE "addr:housename"='StefanReallyRealHome')
 	)=TRUE;
 ```
+
+![u.jpg](images/u5-res.png)
 
 ---
 
@@ -176,15 +181,17 @@ INSERT INTO
 	planet_osm_point (name, place, way)
 VALUES
 (
-	'StefanActualPosion',
+	'StefanPositionNow',
 	'HomeVrable',
 	ST_Transform(
 		ST_GeomFromText(
-			'POINT(18.3103476 48.2443268)', 4236
+			'POINT(18.3103476 48.2443268)', 4326
 		), 3857
 	)
 );
 ```
+
+![u.jpg](images/u6.png)
 
 ---
 
@@ -206,8 +213,10 @@ JOIN
 ON
 	ST_Contains(osm_polygon.way, osm_point.way)
 WHERE
-	osm_point.name='StefanActualPosion' AND osm_polygon."addr:housename" IS NOT NULL;
+	osm_point.name='StefanPositionNow' AND osm_polygon."addr:housename"='StefanReallyRealHome';
 ```
+
+![u.jpg](images/u7-res.png)
 
 ---
 
@@ -243,8 +252,21 @@ SELECT round(
 FROM
 	planet_osm_point
 WHERE
-	planet_osm_point.name='StefanActualPosion';
+	planet_osm_point.name='StefanPositionNow';
 ```
 
+![u.jpg](images/u8-result.png)
+
 Google Maps : 92.37 km
+
 https://map.meurisse.org/ : 92.618 km
+
+---
+
+## Úloha 9:
+
+Kraje + Poloha v QGIS:
+![u.jpg](images/u9-1.png)
+![u.jpg](images/u9-2.png)
+Domovina v QGIS:
+![u.jpg](images/u9-3.png)
