@@ -6,6 +6,10 @@
 
 ## Úloha 1:
 
+Dáta sme importovali pomocou balíka `osm2pgsql`. Balíček je odpoúčaný dokumentáciou (https://wiki.openstreetmap.org/wiki/Osm2pgsql):
+
+_"Osm2pgsql is a software to import OpenStreetMap data into a PostgreSQL/PostGIS database."_
+
 ```
 osm2pgsql -U postgres -W -d svk_postgis -H localhost -C 1000 --number-processes 4  ../data/slovakia-latest.osm.pbf
 ```
@@ -48,7 +52,7 @@ Password:
 
 ## Úloha 2:
 
-Query:
+Riadky filtrujeme podľa `admin_level='4'`. Zobrazíme súradnice bodov (vo formáte longtitude/latitude; EPSG 4326), ktoré tvoria polygón každého z krajov.
 
 ```SQL
 SELECT
@@ -68,7 +72,13 @@ WHERE
 
 ## Úloha 3:
 
-Query:
+Keďže treba počítať polchu v km^2, tak potrebujeme súradnicový systém v metroch. Okrem toho treba, aby čo najlepšie popisoval danú oblasť.
+
+Pomocou stránky https://epsg.io/?q=slovakia sme našli systém, ktorý nám vyhovuje:
+
+![u3-res.jpg](images/u3-www.png)
+
+Pomocou funkcie `ST_Area` vypočítame plochy každého polygónu kraja v km^2.
 
 ```SQL
 SELECT
@@ -85,38 +95,25 @@ ORDER BY
     "Area in sqkm";
 ```
 
+Naše výsledky:
+
 ![u3-res.jpg](images/u3-res.png)
+
+Oficiálne výsledky (https://sk.wikipedia.org/wiki/Zoznam_krajov_na_Slovensku):
+
+![u3-res.jpg](images/u3-www2.png)
 
 ---
 
 ## Úloha 4:
 
-Query:
+Body polygónu našho domu sme našli na pomocou https://www.openstreetmap.org/way/58552464#map=19/48.24430/18.31037.
+
+![u.jpg](images/u4-www.png)
+
+10 bodov uzatvoreného polygónu sme zadali v EPSG 4326, keďže zadávame stupne. A previedli ich na EPSG 3857, lebo v tomto systéme sú ostatné záznamy v tabuľke.
 
 ```SQL
-INSERT INTO
-	planet_osm_polygon ("addr:housename", "addr:housenumber", way)
-VALUES
-(
-	'StefanHome',
-	'1655/52',
-	ST_Transform(
-		ST_GeomFromText(
-			'POLYGON((
-				48.2443337 18.3104035,
-				48.2443232 18.3103985,
-				48.2443061 18.3104750,
-				48.2442041 18.3104265,
-				48.2442253 18.3103236,
-				48.2442404 18.3103302,
-				48.2442545 18.3102629,
-				48.2443532 18.3103097,
-				48.2443337 18.3104035))',
-			4326
-		), 3857
-	)
-);
-
 INSERT INTO
 	planet_osm_polygon ("addr:housename", "addr:housenumber", way)
 VALUES
@@ -152,6 +149,8 @@ WHERE
     "addr:housename"='StefanReallyRealHome';
 ```
 
+Dom sa uložil správne. Polohy súhlasia.
+
 ![u.jpg](images/u4-2.png)
 ![u.jpg](images/u4-1.png)
 
@@ -159,7 +158,7 @@ WHERE
 
 ## Úloha 5:
 
-Query:
+Krajskú príslušnosť zistíme pomocou funkcie `ST_Contains`, ktorá vráti TRUE, ak prvý parameter obsahuje druhý parameter. V našom prípade je prvý parameter polygón každého z krajov a druhý je polygón nášho domu.
 
 ```SQL
 SELECT
@@ -168,9 +167,21 @@ FROM
 	planet_osm_polygon
 WHERE
 	admin_level='4' AND
-	ST_Contains(way, (SELECT way FROM planet_osm_polygon WHERE "addr:housename"='StefanReallyRealHome')
+	ST_Contains
+	(
+		way,
+		(
+			SELECT
+				way
+			FROM
+				planet_osm_polygon
+			WHERE
+				"addr:housename"='StefanReallyRealHome'
+		)
 	)=TRUE;
 ```
+
+Keďže bývame vo Vrábľoch, ktoré sú v Nitrianskom okrese, tak query funguje správne.
 
 ![u.jpg](images/u5-res.png)
 
@@ -178,7 +189,8 @@ WHERE
 
 ## Úloha 6:
 
-Query:
+Aktuálny bod našej polohy sme našli na pomocou https://my-location.org/.
+Bod sme zadali v EPSG 4326, keďže zadávame stupne. A previedli ho na EPSG 3857, lebo v tomto systéme sú ostatné záznamy v tabuľke.
 
 ```SQL
 INSERT INTO
@@ -195,18 +207,19 @@ VALUES
 );
 ```
 
+Sme doma:
+
 ![u.jpg](images/u6.png)
 
 ---
 
 ## Úloha 7:
 
-Query:
+Vyžijeme priestorový JOIN na funkcii `ST_Contain`, teda JOIN nám spojí tie body, ktoré obsahujú polygón nášho domu.
+
+**Sme doma**, ak query vráti riadok, ktorý má v stĺpci `housename` hodnotu `StefanReallyRealHome`
 
 ```SQL
-SELECT COUNT(*) FROM planet_osm_polygon; -- 2655642
-SELECT COUNT(*) FROM planet_osm_point; -- 767652
-
 SELECT
 	osm_polygon."addr:housename" as housename,
 	osm_point.name as pointname
@@ -220,13 +233,23 @@ WHERE
 	osm_point.name='StefanPositionNow' AND osm_polygon."addr:housename"='StefanReallyRealHome';
 ```
 
+A naozaj sme boli doma:
+
 ![u.jpg](images/u7-res.png)
 
 ---
 
 ## Úloha 8:
 
-Query:
+V tejto úlohe meriame vzdialenosť v troch súradnicových systémoch:
+
+1. **Typ geography**: tento typ uvažuje aj so zakrivením Zeme, teda by mal byť na meranie vzdialeností napresnejší. Doporučuje to aj dokumnetácia (https://postgis.net/workshops/postgis-intro/geography.html):
+
+   _"In order to calculate a meaningful distance, we must treat geographic coordinates not as approximate Cartesian coordinates but rather as true spherical coordinates. We must measure the distances between points as true paths over a sphere – a portion of a great circle. PostGIS provides this functionality through the geography type."_
+
+2. **Typ geometry v súradnicovom systéme EPSG 2065**: hoci geometry počíta vzdialenosť v rovine, použitím dedikovaného súradnicového systému pre Slovensko dostaneme presný výsledok.
+
+3. **Typ geometry počítaný na guly**: tento výpočet sa neukázal ako presný, ale skúsili sme.
 
 ```SQL
 SELECT round(
@@ -259,18 +282,25 @@ WHERE
 	planet_osm_point.name='StefanPositionNow';
 ```
 
+Výsledky:
+
 ![u.jpg](images/u8-result.png)
 
-Google Maps : 92.37 km
+Pre porovnanie, vzdialenosti merané pomocou:
 
-https://map.meurisse.org/ : 92.618 km
+- Google Maps : 92.37 km
+
+- https://map.meurisse.org/ : 92.618 km
 
 ---
 
 ## Úloha 9:
 
+QGIS sme použili na vizuaalizácie aj v úlohách 4. a 6.
+
+Modrý bod označuje aktuálnu polohu, pre lepšiu orientáciu.
+
 Kraje + Poloha v QGIS:
-![u.jpg](images/u9-1.png)
 ![u.jpg](images/u9-2.png)
 Domovina v QGIS:
 ![u.jpg](images/u9-3.png)
@@ -279,14 +309,23 @@ Domovina v QGIS:
 
 ## Úloha 10:
 
+Najprv si zoradíme všetky kraje podľa veľkosti plochy (opať počítame plochu v EPSG 2065).
+Najmenší kraj je Bratislavský.
+
 ```SQL
 SELECT
-	ST_Centroid(g.way),
-	ST_SRID(g.way)
+	ST_AsText
+	(
+		ST_Centroid(g.ST_Transform)
+	) as coordinates,
+	ST_SRID(g.ST_Transform) as EPSG_ID
 FROM
 	(
 		SELECT
-			way
+			ST_Transform
+			(
+				way, 4326
+			)
 		FROM
 			planet_osm_polygon
 		WHERE
@@ -300,50 +339,129 @@ FROM
 	)as g
 ```
 
+Výsledok v súradniciach ukazujeme v EPSG 4326, keďže chceme súradnice a tie sú najlepšie pochopiteľné vo formáte longtitude/latitude.
+
 ![u.jpg](images/u10-res.png)
 
-Na mape:
+Na mape je použitý EPSG 3857, aby to sme zachovali súlad súranicových systémov (podkladová mapa je OpenStreetMap teda je v EPSG 3857):
+
 ![u.jpg](images/u10-map.png)
 
-## Uloha 11
+---
+
+## Úloha 11
+
+Najprv vytvoríme prienik pomocou `ST_Intersection` bodov Malackého a Pezinského okresu. Tým dostaneme body, ktoré ležia na hranici (červenou).
+
+![u.jpg](images/u11-border.png)
+
+Tieto body prevedieme do súradnicového systému pre oblasť Slovenska EPSG 2065. Aby sme mohli vytvoriť obalovú zónu (`ST_Buffer`), ktorá naozaj zodpovedá 10 km.
+
+![u.jpg](images/u11-border-buffer.png)
+
+Následene urobíme prienik tejto obalovej zóny s geometry objektami z tabuľky `planet_osm_roads`. Tým by sme mali dostať sieť všetkých bodov, ktoré sú považované za cestu a pritom sú v želanom perimetri.
+
+![u.jpg](images/u11-res-map.png)
+![u.jpg](images/u11-res.png)
+
+Potom už len pomocou `CREATE TABLE roads_10km_malacky_pezinok_border AS` z výsledku urobíme tabuľku v DB.
+
+```SQL
+CREATE TABLE roads_10km_malacky_pezinok_border AS
+	SELECT
+		ST_Intersection
+		(
+			way,
+			(
+				SELECT
+					ST_Transform(
+						ST_Buffer(border, 10000), 3857
+					)
+				FROM
+					ST_Transform(
+							ST_Intersection(
+								(
+									SELECT
+										way
+									FROM
+										planet_osm_polygon
+									WHERE
+										name='okres Malacky'
+								),
+								(
+									SELECT
+										way
+									FROM
+										planet_osm_polygon
+									WHERE
+										name='okres Pezinok'
+								)
+							), 2065
+				) as border
+			)
+		)
+	FROM
+		planet_osm_roads
+```
+
+---
+
+## Uloha 12
+
+;-(
+
+---
+
+## Uloha 13
+
+Atribúty `admin_level='6' AND name='Bratislava` pokrývajú oblasť Bratislavy (okresy Bratilava I až V).
+
+![u.jpg](images/u13-1.png)
+
+Nad touto plochou vytvoríme pomocou `ST_Buffer` obalovú plochu s polomerom 20 000 metrov. Od tejto plochy odčítame plochu Bratislavy (`ST_Difference`).
+
+![u.jpg](images/u13-2.png)
+
+Vytvoríme prienik bodov pomocou `ST_Intersection` obalovej plochy s plochou, ktorá vznikne zjednotením (`ST_Union`) plochy Bratislavkého a Trnavského kraja. Tým máme zaručené, že `Bratislava_Okolie` bude iba na Slovenku.
+
+![u.jpg](images/u13-3.png)
+![u.jpg](images/u13-4.png)
+
+Potom už len vypočítame veľkosť plochy pomocou `ST_Area`, v súradnicovom systéme pre oblasť Slovenska EPSG 2065.
+
+![u.jpg](images/u13-res.png)
 
 ```SQL
 SELECT
-	ST_Intersection
-	(
-		way,
-		(
-			SELECT
+	round(
+        	(ST_Area(
 				ST_Transform(
-					ST_Buffer(border, 10000), 3857
-				)
-			FROM
-				ST_Transform(
-						ST_Intersection(
-							(
-								SELECT
-									way
-								FROM
-									planet_osm_polygon
-								WHERE
-									name='okres Malacky'
-							),
-							(
-								SELECT
-									way
-								FROM
-									planet_osm_polygon
-								WHERE
-									name='okres Pezinok'
-							)
-						), 2065
-			) as border
-		)
-	)
+					Bratislava_Okolie.ST_Intersection, 2065)
+				) / 1000000
+			)::numeric, 2
+    ) as "Area in sqkm"
 FROM
-	planet_osm_roads
+	(
+		SELECT
+			ST_Intersection
+			(
+				ST_Difference
+				(
+					ST_Buffer(way, 20000),
+					way
+				),
+				(
+					SELECT
+						ST_Union(way)
+					FROM
+						planet_osm_polygon
+					WHERE
+						admin_level='4' AND (name='Bratislavský kraj' OR name='Trnavský kraj')
+				)
+			)
+		FROM
+			planet_osm_polygon
+		WHERE
+			admin_level='6' AND name='Bratislava'
+	) as Bratislava_Okolie;
 ```
-
-![u.jpg](images/u11-res.png)
-Na mape:
-![u.jpg](images/u11-res-map.png)
