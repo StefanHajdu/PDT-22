@@ -80,24 +80,32 @@ Pomocou stránky https://epsg.io/?q=slovakia sme našli systém, ktorý nám vyh
 
 Pomocou funkcie `ST_Area` vypočítame plochy každého polygónu kraja v km^2.
 
+Pre porovnanie počítame rozlohu aj pomocou typu `geography` vypočítaného zo súradnicového systému EPSG 4326.
+
 ```SQL
 SELECT
     name,
 	round(
         (ST_Area(
 		    ST_Transform(way, 2065)) / 1000000)::numeric, 2
-    ) as "Area in sqkm"
+    ) as "Area in sqkm (EPSG 2065)",
+	round(
+        (ST_Area(
+		    ST_Transform(way, 4326)::geography) / 1000000)::numeric, 2
+    ) as "Area in sqkm (EPSG 4326)"
 FROM
     planet_osm_polygon
 WHERE
     admin_level='4'
 ORDER BY
-    "Area in sqkm";
+    "Area in sqkm (EPSG 2065)";
 ```
 
 Naše výsledky:
 
 ![u3-res.jpg](images/u3-res.png)
+
+Rozloha počítaná pomocou `geography` je takmer rovnaká ako počítaná pomocou dedikovaného súradnicového systému pre Slovensko.
 
 Oficiálne výsledky (https://sk.wikipedia.org/wiki/Zoznam_krajov_na_Slovensku):
 
@@ -296,20 +304,23 @@ Pre porovnanie, vzdialenosti merané pomocou:
 
 ## Úloha 9:
 
-QGIS sme použili na vizuaalizácie aj v úlohách 4. a 6.
+QGIS sme použili na vizualizácie aj v úlohách 4. a 6.
 
 Modrý bod označuje aktuálnu polohu, pre lepšiu orientáciu.
 
 Kraje + Poloha v QGIS:
+
 ![u.jpg](images/u9-2.png)
+
 Domovina v QGIS:
+
 ![u.jpg](images/u9-3.png)
 
 ---
 
 ## Úloha 10:
 
-Najprv si zoradíme všetky kraje podľa veľkosti plochy (opať počítame plochu v EPSG 2065).
+Najprv si zoradíme všetky kraje podľa veľkosti plochy (plochu počítame v EPSG 2065).
 Najmenší kraj je Bratislavský.
 
 ```SQL
@@ -343,7 +354,7 @@ Výsledok v súradniciach ukazujeme v EPSG 4326, keďže chceme súradnice a tie
 
 ![u.jpg](images/u10-res.png)
 
-Na mape je použitý EPSG 3857, aby to sme zachovali súlad súranicových systémov (podkladová mapa je OpenStreetMap teda je v EPSG 3857):
+Na mape je použitý EPSG 3857, aby sme zachovali súlad súranicových systémov (podkladová mapa je OpenStreetMap teda je v EPSG 3857):
 
 ![u.jpg](images/u10-map.png)
 
@@ -361,7 +372,18 @@ Tieto body prevedieme do súradnicového systému pre oblasť Slovenska EPSG 206
 
 Následene urobíme prienik tejto obalovej zóny s geometry objektami z tabuľky `planet_osm_roads`. Tým by sme mali dostať sieť všetkých bodov, ktoré sú považované za cestu a pritom sú v želanom perimetri.
 
+![u.jpg](images/u11-all-roads.png)
+
+Potom už len odfiltrujeme tie úseky, ktoré nie sú určené pre motorové vozidlá. Zdroj (https://wiki.openstreetmap.org/wiki/Key:highway) uvádza, že cesty vhodné pre motorové vozidlá sú definované hodnotami:
+
+- motorway
+- trunk
+- primary
+- secondary
+- tertiary
+
 ![u.jpg](images/u11-res-map.png)
+
 ![u.jpg](images/u11-res.png)
 
 Potom už len pomocou `CREATE TABLE roads_10km_malacky_pezinok_border AS` z výsledku urobíme tabuľku v DB.
@@ -402,13 +424,15 @@ CREATE TABLE roads_10km_malacky_pezinok_border AS
 		)
 	FROM
 		planet_osm_roads
+	WHERE
+		highway IN ('motorway', 'trunk', 'primary', 'secondary', 'tertiary')
 ```
 
 ---
 
 ## Uloha 12
 
-;-(
+:\_(
 
 ---
 
@@ -418,7 +442,7 @@ Atribúty `admin_level='6' AND name='Bratislava` pokrývajú oblasť Bratislavy 
 
 ![u.jpg](images/u13-1.png)
 
-Nad touto plochou vytvoríme pomocou `ST_Buffer` obalovú plochu s polomerom 20 000 metrov. Od tejto plochy odčítame plochu Bratislavy (`ST_Difference`).
+Nad touto plochou vytvoríme pomocou `ST_Buffer` obalovú plochu s polomerom 20 000 metrov. Obalovú plochu počítame v EPSG 2065, aby sme zachovali správne hodnoty vzdialeností. Následne ju prevedieme naspäť na EPSG 3857, aby sme vedeli výsledok vizualizovať a tiež preto, aby do funkcie rozdielu vstupovali rovnaké súradnicové systémy. Od tejto plochy odčítame plochu Bratislavy (`ST_Difference`).
 
 ![u.jpg](images/u13-2.png)
 
@@ -441,27 +465,37 @@ SELECT
 			)::numeric, 2
     ) as "Area in sqkm"
 FROM
-	(
-		SELECT
-			ST_Intersection
+(
+	SELECT
+		ST_Intersection
+		(
+			ST_Difference
 			(
-				ST_Difference
+				ST_Transform
 				(
-					ST_Buffer(way, 20000),
-					way
+					ST_Buffer
+					(
+						ST_Transform(way, 2065),
+						20000
+					),
+					3857
 				),
-				(
-					SELECT
-						ST_Union(way)
-					FROM
-						planet_osm_polygon
-					WHERE
-						admin_level='4' AND (name='Bratislavský kraj' OR name='Trnavský kraj')
-				)
+				way
+			),
+			(
+				SELECT
+					ST_Union(way)
+				FROM
+					planet_osm_polygon
+				WHERE
+					admin_level='4' AND (name='Bratislavský kraj' OR name='Trnavský kraj')
 			)
-		FROM
-			planet_osm_polygon
-		WHERE
-			admin_level='6' AND name='Bratislava'
-	) as Bratislava_Okolie;
+		)
+	FROM
+		planet_osm_polygon
+	WHERE
+		admin_level='6' AND name='Bratislava'
+)
+AS
+	Bratislava_Okolie;
 ```
