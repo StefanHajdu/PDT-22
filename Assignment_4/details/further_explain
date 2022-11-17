@@ -1,0 +1,7 @@
+Ahojte, viaceri sa ozvali, ze v prvej ulohe neexistuje ziadny tweet co by retweetoval zelenskeho tweet. 
+Nejako tie retweety pri minimalizovani datasetu vypadli. Nevyhladavajte teda prosim najretweetovanejsi tweet ale tweet, 
+ktory ma najviac odpovedi (REPLIED_TO), takych by tam malo byt dost - zda sa mi ze dva mali tak isto, ale to je jedno ktory z nich retweetnete.
+
+Tiez potom v druhej ulohe, prosim nepouzite nakoniec OPTIONAL MATCH, cize hladajte len tweety, 
+ktore maju aspon jeden retweet - je tam zopar botov co maju vela krat 0 alebo malo retweetov a tie vysledky potom nie su az take pekne.
+
