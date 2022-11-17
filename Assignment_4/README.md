@@ -137,6 +137,24 @@ RETURN paths
 
 ![u3-res.jpg](images/u4-res.png)
 
+## Úloha 5
+
+**Výsledné Query:**
+
+```SQL
+MATCH (ua_par:Author {username: 'ua_parliament'}), (nexta:Author {username: 'nexta_tv'})
+MATCH path = shortestPath((ua_par)-[*..10]-(nexta))
+WHERE all(rel IN relationships(path) WHERE type(rel) IN ['TWEETED', 'QUOTED', 'REPLIED_TO', 'RETWEETED'])
+WITH reduce(output = [], n IN nodes(path) | output + n) as nodesCollection
+UNWIND nodesCollection as tweet_nodes
+WITH tweet_nodes
+WHERE 'Conversation' IN LABELS(tweet_nodes)
+MATCH (a:Author)-[tw:TWEETED]->(tweet_nodes)
+RETURN a, tw, tweet_nodes
+```
+
+![u3-res.jpg](images/u5.png)
+
 ## Úloha 6
 
 **Výsledné Query:**
