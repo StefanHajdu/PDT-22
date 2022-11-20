@@ -100,7 +100,7 @@ LIMIT 20
 MATCH (Marios:Author {username: 'Marios59885699'})-[m_tweet:TWEETED]->(MariosTweet:Conversation)-[m_retweet:RETWEETED]->(MariosRetweet:Conversation)
 
 // najde vsetky cesty od ineho autora k tweetom retweetnutych Mariosom
-MATCH (likeMarios:Author)-[o_tweet:TWEETED]->(likeMariosTweet:Conversation)-[o_retweet:RETWEETED]->(MariosRetweet)
+MATCH (likeMarios:Author)-[o_tweet:TWEETED]->(likeMariosTweet:Conversation)-[o_retweet:RETWEETED*..2]->(MariosRetweet)
 WHERE Marios <> likeMarios AND likeMarios.username = '03bonbon03'
 RETURN likeMarios
 ```
@@ -145,7 +145,8 @@ RETURN paths
 MATCH (ua_par:Author {username: 'ua_parliament'}), (nexta:Author {username: 'nexta_tv'})
 MATCH path = shortestPath((ua_par)-[*..10]-(nexta))
 WHERE all(rel IN relationships(path) WHERE type(rel) IN ['TWEETED', 'QUOTED', 'REPLIED_TO', 'RETWEETED'])
-WITH reduce(output = [], n IN nodes(path) | output + n) as nodesCollection
+// WITH reduce(output = [], n IN nodes(path) | output + n) as nodesCollection
+WITH nodes(path) as nodesCollection
 UNWIND nodesCollection as tweet_nodes
 WITH tweet_nodes
 WHERE 'Conversation' IN LABELS(tweet_nodes)
