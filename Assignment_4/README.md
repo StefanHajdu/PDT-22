@@ -72,7 +72,7 @@ od Accountov, ktoré sú na prvých 10 miestach v celkovom počte retweetov. Aj 
 taký príklad v datasete nie je, počítajte aj s prípadom, ak by niektorý tweet bol
 retweetnutý 0 krát.**
 
-Najprv si nájdeme top 10 "influencerov". Sú to taký autori, ktorých tweety, boli najviackrát spojené s iným tweetom cez vzťah `RETWEETED`.
+Najprv si nájdeme top 10 "influencerov". Sú to takí autori, ktorých tweety, boli najviackrát spojené s iným tweetom cez vzťah `RETWEETED`.
 
 **Query pre 10 najvačších influencerov podľa počtu retweetov:**
 
@@ -133,7 +133,7 @@ RETURN likeMarios
 
 ![u3-res.jpg](images/u3-show.png)
 
-Vo výslednom query najprv nájedeme všetky tweety, ktoré retweetoval Marios. Potom k týmto tweetom nájdeme všetkých autorov, ktorý nie sú Marios, ale retweetovali rovnaké tweety. Pri vzťahu sme nastavili hĺbku pre vzťah `RETWEETED` na interval 1 alebo 2, teda uvažujeme aj o retweetoch, ktoré retweetujú rovnaký (Mariosov) tweet. Najdených autorov potom už len spočítame a zoradíme.
+Vo výslednom query najprv nájedeme všetky tweety, ktoré retweetoval Marios. Potom k týmto tweetom nájdeme všetkých autorov, ktorí nie sú Marios, ale retweetovali rovnaké tweety. Pri vzťahu sme nastavili hĺbku pre vzťah `RETWEETED` na interval 1 alebo 2, teda uvažujeme aj o retweetoch, ktoré retweetujú rovnaký (Mariosov) tweet. Najdených autorov potom už len spočítame a zoradíme.
 
 **Výsledné Query:**
 
@@ -195,7 +195,7 @@ RETURN a, tw, tweet_nodes
 **Vypíšte 10 najpoužívanejších hashtagov v datasete aj s celkovým počtom použití a
 autorom, ktorý daný hashtag najviac krát použil. (hint: collect)**
 
-V subquery si najprv nájdeme 10 najpoužívanejších hashtagov (najpoužívanejší je ten, ktorý má najviac vzťahov `HAS`). Subquery nám vrati hashtagy aj s celkovým počtom použitia.
+V subquery si najprv nájdeme 10 najpoužívanejších hashtagov (najpoužívanejší je ten, ktorý má najviac vzťahov `HAS`). Subquery nám vráti hashtagy aj s celkovým počtom použitia.
 
 Potom na tieto hashtagy namapujeme na autorov, ktorý ich použili. Pre každého autora a hashtag spočítame počet vzťahov `TWEETED`, to nám dá informáciu o tom, koľkokrát bol daný hashtag použitý daným autorom, následne výsledok podľa tohto počtu zoradíme. Tým dostaneme top autorov, pre každý hashtag.
 Následne autorov spojíme do zoznamu (pomocou `collect()`). Tým že sme výsledok zoradili, tak vieme, že prvý autor v zozname je najčastejší používateľ, preto zo zoznamu vyberieme iba prvého (index [0])
