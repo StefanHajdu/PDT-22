@@ -1,0 +1,90 @@
+{
+  "_id": "1496623104340152320",
+  "metadata": {
+    "id": 1496623104340152320,
+    "author_id": 19346439,
+    "content": "Sound on. Ukrainian soldiers trolling the Russians: \"Here we are now, entertain us\" h/t @TaskandPurpose #StandWithUkraine https://t.co/byQsSTjaEs",
+    "possibly_sensitive": false,
+    "language": "en",
+    "source": "Twitter Web App",
+    "retweet_count": 37,
+    "reply_count": 15,
+    "like_count": 138,
+    "quote_count": 6,
+    "created_at": "2022-02-24T00:08:48+01:00"
+  },
+  "author": {
+    "id": 19346439,
+    "name": "LouiseMensch 🇬🇧🇺🇸🇺🇦",
+    "username": "LouiseMensch",
+    "description": "\"Unhinged British witch\" \"a textbook succubus\"- Russian Insider. Reverse Cassandra on Russia's invasion of Ukraine",
+    "followers_count": 278228,
+    "following_count": 36016,
+    "tweet_count": 100638,
+    "listed_count": 4015,
+    "fts_username_eng": "'louisemensch':1",
+    "fts_description_eng": "'british':2 'cassandra':10 'insid':8 'invas':14 'revers':9 'russia':12 'russian':7 'succubus':6 'textbook':5 'ukrain':16 'unhing':1 'witch':3"
+  },
+  "annotations": [
+    {
+      "id": 18578954,
+      "conversation_id": 1496623104340152320,
+      "value": "Russians",
+      "type": "Person",
+      "probability": 0.422
+    },
+    {
+      "id": 18578954,
+      "conversation_id": 1496623104340152320,
+      "value": "Russians",
+      "type": "Person",
+      "probability": 0.422
+    }
+  ],
+  "links": [
+    {
+      "id": 10757561,
+      "conversation_id": 1496623104340152320,
+      "url": "https://twitter.com/Shtirlitz53/status/1496178419037528065?ref_src=twsrc%5Etfw%7Ctwcamp%5Etweetembed%7Ctwterm%5E1496178419037528065%7Ctwgr%5E%7Ctwcon%5Es1_&ref_url=https%3A%2F%2Ftaskandpurpose.com%2Fnews%2Fukraine-soldiers-troll-russian-army-nirvana%2F",
+      "title": null,
+      "description": null
+    },
+    {
+      "id": 10757561,
+      "conversation_id": 1496623104340152320,
+      "url": "https://twitter.com/Shtirlitz53/status/1496178419037528065?ref_src=twsrc%5Etfw%7Ctwcamp%5Etweetembed%7Ctwterm%5E1496178419037528065%7Ctwgr%5E%7Ctwcon%5Es1_&ref_url=https%3A%2F%2Ftaskandpurpose.com%2Fnews%2Fukraine-soldiers-troll-russian-army-nirvana%2F",
+      "title": null,
+      "description": null
+    }
+  ],
+  "domains": [
+    {
+      "id": 1,
+      "name": "Person",
+      "description": "Named people in the world like Nelson Mandela"
+    },
+    {
+      "id": 3,
+      "name": "Unified Twitter Taxonomy",
+      "description": "A taxonomy view into the Semantic Core knowledge graph"
+    }
+  ],
+  "entities": [
+    { "id": 1, "name": "Joe Biden", "description": "US President Joe Biden" },
+    { "id": 33, "name": "Lil Reese", "description": "Lil Reese" },
+    { "id": 0, "name": "Russo-Ukrainian conflict", "description": null },
+    { "id": 3, "name": "Politics", "description": "Politics" },
+    { "id": 3, "name": "Politics", "description": "Politics" },
+    { "id": 3, "name": "Politics", "description": "Politics" }
+  ],
+  "hashtags": [
+    { "id": 39, "tag": "StandWithUkraine" },
+    { "id": 39, "tag": "StandWithUkraine" },
+    { "id": 39, "tag": "StandWithUkraine" }
+  ],
+  "referencies": [
+    { "type": "quoted", "reference_id": "1496178419037528065" },
+    { "type": "quoted", "reference_id": "1496178419037528065" },
+    { "type": "quoted", "reference_id": "1496178419037528065" }
+  ]
+}
