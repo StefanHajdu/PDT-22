@@ -24,11 +24,11 @@ Referencing:
 
 - referencies
 
-Dáta sme modelovali podla definovaných vzťahov. Pre `metadata` a `author` je jednoznačne najlepší prístup embedding, pretože ide o vzťah 1:1.
+Dáta sme modelovali podla definovaných vzťahov z obrázku. Pre `metadata` a `author` je jednoznačne najlepší prístup embedding, pretože ide o vzťah 1:1.
 
 Pri `annotations`, `links`, `domains`, `entities` a `hashtags` už situácia je trochu komplikovanejšia, keďže ide o vzťahy 1:n. Všetky by mohli byť uložené ako samostatné dokumenty, ktoré by boli spojené s tweetom ako referencia. My sme sa rozhodli ich uložiť priamo do hlavného dokumentu, lebo nepredpokladáme, že by tweet obsahoval 100-ky z každej triedy. Tieto vzťahy majú bližšie k 1:few ako 1:many, preto sme postupovali podľa best practices a uložili ich ako embeddings.
 
-Pri `referencies` je situácia iná. Tu by už bolo veľmi pamäťovo neefktíne skladovať celé dokumenty ako referencie. Preto ukladáme pre referencie iba typ referencie a id dokumentu, na ktorý sa odkazuje. Hoci aj tento vzťah spadá do kategórie 1:few je lepšie ho riešiť ako referencing. Obsah referencí vieme získať cez query:
+Pri `referencies` je situácia iná. Tu by už bolo veľmi pamäťovo neefktíne skladovať celé dokumenty. Preto ukladáme pre referencie iba typ referencie a id dokumentu, na ktorý sa odkazuje. Hoci aj tento vzťah spadá do kategórie 1:few je lepšie ho riešiť ako referencing. Obsah referencí vieme získať (ak by sme potrebovali) cez query:
 
 ```javascript
 db.tweets_all.aggregate([
@@ -238,11 +238,11 @@ mongosh
 
    Výstupom je tabuľka, ktorá vo svojich riadkoch obsahuje konkrétne dokumenty, ktoré sa vložia do databázy.
 
-3. Vytvorenie jednoduchého import skriptu `import_2_mongo`, ktorý sa pripojí na Postgres a mongoDB server. A postupne číta tabuľku z_data_4_mongo po 100000 záznamoch, ktoré ako pole vkladá do monga. Implementované podľa návodu [JSON to MongoDB](https://www.mongodb.com/compatibility/json-to-mongodb).
+3. Vytvorenie jednoduchého import skriptu `import_2_mongo.py`, ktorý sa pripojí na Postgres aj mongoDB server. A postupne číta tabuľku z_data_4_mongo po 100000 záznamoch, ktoré ako pole vkladá do monga. Implementované podľa návodu [JSON to MongoDB](https://www.mongodb.com/compatibility/json-to-mongodb).
 
 ## Úloha 3:
 
-Vytvorené dotazy (vo výsledkoch vypisujeme iba feed - autora, dátum, content):
+Vytvorené dotazy (vo výsledkoch vypisujeme iba autora, dátum, content):
 
 1. **Vypíše posledných 10 tweetov pre autora, ktorý má username Newnews_eu**
 

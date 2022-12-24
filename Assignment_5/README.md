@@ -49,7 +49,7 @@ Počet shardov sme pre index definovali:
 | ES02 | PS_02              | R_01, R_03   |
 | ES03 | PS_03              | R_01, R_02   |
 
-Na každom node máme pripravené všetky 3 shardy, teda klaster by mal byť schopný servovať dáta aj pri výpadku 2 nodov. 3 shardy sme schopný prehľadávať paralelne. K dispozícií sme mali procesor so 4 CPU, teda každý node vie mať vlastné CPU. Paralelné vyhľadávanie je možné aj pri výpadku 1 nodu, pretože ten bude zastúpený replikou na inom node, ktorý je na vlastnom CPU.
+Na každom node máme pripravené všetky 3 shardy, teda klaster by mal byť schopný servovať dáta aj pri výpadku 2 nodov. 3 shardy sme schopný prehľadávať paralelne. K dispozícií sme mali procesor so 4 CPU, teda každý node vie mať vlastné CPU. Paralelné vyhľadávanie je možné aj pri výpadku 1 nodu, pretože ten bude zastúpený replikou na inom node, ktorý je opäť na vlastnom CPU.
 
 Pre 3 primárne shardy sme sa rozhodli podľa literatúry [Elasticsearch in Action, Second Edition](https://www.manning.com/books/elasticsearch-in-action-second-edition), kde sa uvádza pre voľbu počtu shardov nasledovné:
 
@@ -65,7 +65,7 @@ V našom prípade sme očakávali približne 80GB dát, čo vieme podľa tohto o
 
 Vytvorený mapping pre denormalizovanú databázu:
 
-Dokument je rozdelený do niekoľkých subsekcii:
+Dokument je rozdelený do niekoľkých subsekcii(kapitol):
 
 - metadata: informácie o tweete
 
@@ -145,11 +145,11 @@ Text tweetu je analyzovaný custom analýzátorom `englando`.
 }
 ```
 
-Keďže v ES je možné priradiť iba jeden analyzátor pre pole, tak aby sme vyhoveli požiadavnkám úlohy 4, tak sme polia `name, username` vytvorili duplikácie, ktoré sú analyzované inak ako štandardným analyzátorom. Teda ak chceme hľadať pomocou analyzátora `custom_shingles`, tak bude analyzovať pole: `author->description->description_shigles`.
+Keďže v ES je možné priradiť iba jeden analyzátor pre pole, tak aby sme vyhoveli požiadavnkám úlohy 4, tak sme pre polia `name, username` vytvorili duplikácie, ktoré sú analyzované inak ako štandardným analyzátorom. Teda ak chceme hľadať pomocou analyzátora `custom_shingles`, tak bude analyzovať pole: `author->description->description_shigles`.
 
 Polia `fts_username_eng a fts_description_eng` sú zabudnuté pozostatky, ktoré sa neindexujú.
 
-Pre nasledujúce polia sme využili typ `nested`, keďže každý tweet ich môže mať 0 až N. Štruktúra týchto polí je pomerne self-explanatory:
+Pre nasledujúce polia sme využili typ `nested`, keďže každý tweet ich môže mať 0 až N.
 
 - links: informácie o odkazoch
 
@@ -207,7 +207,7 @@ Pre nasledujúce polia sme využili typ `nested`, keďže každý tweet ich mô�
       }
   ```
 
-  Hashtagy sú indexované ako lowercase.
+  Hashtagy sú indexované ako lowercase. Elegantnejšie by bolo prehodiť tagy do lowercasu už počas denormalizácii.
 
 - annotations: informácie o anotáciach
 
@@ -226,7 +226,7 @@ Pre nasledujúce polia sme využili typ `nested`, keďže každý tweet ich mô�
 
   Toto pole by sa dalo vyriešiť aj pomocou obyčajného typu `object`, keďže sa nad ním neplánuje vykonávať vyhľadávanie v úlohe 10.
 
-- referencies: informácie a tweetoch na ktoré sa dokumnet odkazuje
+- referencies: informácie a tweetoch na ktoré sa dokument odkazuje:
 
   ```json
   "referencies": {
@@ -282,41 +282,41 @@ Typy pre polia sme priraďovali podľa zadania úlohy 10:
 - `text`, nad týmto polom sa **plánuje** full-text search, teda je potrebné ho analyzovať
 - `keyword`, nad týmto polom sa **neplánuje** full-text search, teda nie je potrebné ho analyzovať
 
-Pri tvorbe dokumentu sme zvolili metódy duplikovania obsahu, teda každý indexovaný dokument/tweet v sebe obsahuje všetky informácie, ktoré sa ho priamo týkajú. Teda nie je potrebné robiť join s iým dokumentom.
+Pri tvorbe dokumentu sme zvolili metódy duplikovania obsahu, teda každý indexovaný dokument/tweet v sebe obsahuje všetky informácie, ktoré sa ho priamo týkajú. Teda nie je potrebné robiť join s iným dokumentom.
 
 ### **Pre index tweets vytvorte 3 vlastné analyzéry (v settings) nasledovne:**
 
 ```json
 "analysis": {
     "analyzer": {
-    "englando": {
-        "type": "custom",
-        "char_filter": ["html_strip"],
-        "tokenizer": "standard",
-        "filter": [
-        "lowercase",
-        "english_stop",
-        "english_possessive_stemmer",
-        "english_stemmer"
-        ]
-    },
-    "custom_shingles": {
-        "type": "custom",
-        "char_filter": ["html_strip"],
-        "tokenizer": "standard",
-        "filter": ["lowercase", "asciifolding", "filter_shingles"]
-    },
-    "custom_ngram": {
-        "type": "custom",
-        "char_filter": ["html_strip"],
-        "tokenizer": "standard",
-        "filter": ["lowercase", "asciifolding", "filter_ngrams"]
-    },
-            "just_lowercase": {
-                "type": "custom",
-                "tokenizer": "standard",
-                "filter": ["lowercase"]
-            }
+      "englando": {
+          "type": "custom",
+          "char_filter": ["html_strip"],
+          "tokenizer": "standard",
+          "filter": [
+          "lowercase",
+          "english_stop",
+          "english_possessive_stemmer",
+          "english_stemmer"
+          ]
+      },
+      "custom_shingles": {
+          "type": "custom",
+          "char_filter": ["html_strip"],
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding", "filter_shingles"]
+      },
+      "custom_ngram": {
+          "type": "custom",
+          "char_filter": ["html_strip"],
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding", "filter_ngrams"]
+      },
+      "just_lowercase": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+      }
     },
     "filter": {
         "english_stop": {
@@ -335,7 +335,7 @@ Pri tvorbe dokumentu sme zvolili metódy duplikovania obsahu, teda každý index
             "type": "shingle",
             "min_shingle_size": 2,
             "max_shingle_size": 3,
-            "token_separator": " "
+            "token_separator": ""
         },
         "filter_ngrams": {
             "type": "ngram",
@@ -385,7 +385,7 @@ Výhody denormalizácie:
    - context_entities
    - hashtags
 
-   Použili sme LEFT JOIN do tabuľky `convesations`, aby sme zachovali počet tweetov.
+   Použili sme LEFT JOIN do tabuľky `conversations`, aby sme zachovali počet tweetov.
 
    ```sql
    create table z_tweets_denormalized as
@@ -502,7 +502,7 @@ Výhody denormalizácie:
 
    Query sa vykonalo za približne 30 min.
 
-3. Spojenie tweetov s ich referenciami, a tým vytvorenie kompletného dokumentu. Keďže sme pre každý referencovaný tweet potrebovali aj autora aj hashtagy, bolo potrebné vykonať join všetkých existujúcich referencii s autormi a hashtagmi. Až následne sa to mohlo joinnúť s dokumentom.
+3. Spojenie tweetov s ich referenciami, a tým vytvorenie kompletného dokumentu. Podľa referenčnej tabuľky spájame denormalizované dáta z tabuľky vytvorenej v predchádzajúcom query.
 
    ```sql
    create table z_tweet_json as
@@ -554,7 +554,7 @@ Výhody denormalizácie:
 
    Query sa vykonalo za približne 1 hodinu 40 minút. Tabuľku z_tweets_denormalized bolo možné po tomto joine vymazať.
 
-Nakoniec ešte uvedieme príklad jedného riadka zo stĺpca `tweet`, ktorý obsahuje celý dokument (nie je možné ho screen-shotnúť kvôli dĺžke):
+Nakoniec ešte uvedieme príklad jedného riadka zo stĺpca `tweet`, ktorý obsahuje celý dokument:
 
 ```json
 {
@@ -754,7 +754,9 @@ Zistenie:
 Error: Couldn't connect to server
 ```
 
-Ale po opätovnom spustení sa nám prehodia primary shards, teraz je na ES03 P0 aj P1:
+Čo je zaujímavé, pretože ostané nody sú aktívne.
+
+Po opätovnom spustení ES01 sa nám prehodia primary shards, teraz je na ES03 P0 aj P1:
 
 ```console
 tweets_index    0 r STARTED        17688   6.5mb 172.18.0.3 ES01
@@ -767,8 +769,6 @@ tweets_index    2 r STARTED        17847   6.2mb 172.18.0.3 ES01
 tweets_index    2 r STARTED            0   1.2mb 172.18.0.2 ES03
 tweets_index    2 p STARTED        17847   1.2mb 172.18.0.4 ES02
 ```
-
-Čo je zaujímavé, pretože ostané nody sú aktívne.
 
 2. Kombinácia nodov: `ES01 - UP, ES02 - DOWN, ES03 - UP`, umožňuje fungovanie, pre všetky typy operácii.
 

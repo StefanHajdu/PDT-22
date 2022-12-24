@@ -39,6 +39,8 @@ services:
         hard: -1
     volumes:
       - /home/stephenx/Docker_Workspace/elastic-data/
+    ports:
+      - 9201:9200
     networks:
       - elastic
 
@@ -59,6 +61,8 @@ services:
         hard: -1
     volumes:
       - /home/stephenx/Docker_Workspace/elastic-data/
+    ports:
+      - 9202:9200
     networks:
       - elastic
 
